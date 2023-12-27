@@ -21,17 +21,17 @@ export class AuthService {
    async signup(signupDto: SignupDto) {
     const {email, password, username} = signupDto;
     // ** Vérifier si l'utilisateur est déjà inscrit
-   const user =  await this.prismaService.user.findUnique({where : { email } });
+    const user =  await this.prismaService.user.findUnique({where : { email } });
     if (user) throw new ConflictException("User already exist");
     // ** Hasher le mot de passe
-   const hash = await bcrypt.hash(password, 10);
-   // ** Enregistrer l'utilisateur dans la base de données
-   await this.prismaService.user.create({
+    const hash = await bcrypt.hash(password, 10);
+    // ** Enregistrer l'utilisateur dans la base de données
+    await this.prismaService.user.create({
     data : {email, username, password : hash},
-});
-  // ** Envoyer un email de confirmation
-   await this.emailService.sendSignupConfirmation(email);
-  // ** Retourner une réponse de succès
+    });
+    // ** Envoyer un email de confirmation
+    await this.emailService.sendSignupConfirmation(email);
+    // ** Retourner une réponse de succès
        return {data : 'User successfully created'};
     }
 
@@ -64,6 +64,14 @@ export class AuthService {
     const {email} = resetPasswordDemandDto;
     const user = await this.prismaService.user.findUnique({where : {email}})
     if(!user) throw new NotFoundException('User not found'); 
-
+    const code = speakeasy.totp({
+        secret : this.configService.get("OTP_CODE"),
+        digits : 5,
+        step : 60 * 15,
+        encoding : "base32"
+     })
+     const url = "http://localhost:3000/auth/reset-password-confirmation"
+     await this.emailService.sendResetPassword(email, url, code)
+     return {data : "Reset password mail has been send"}
     }
 }
