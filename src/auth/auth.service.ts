@@ -8,6 +8,7 @@ import { MailerService } from 'src/mailer/mailer.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ResetPasswordDemandDto } from './dto/resetPasswordDemandDto';
+import { ResetPasswordConfirmationDto } from './dto/resetPasswordConfirmationDto';
 
 
 @Injectable()
@@ -73,5 +74,21 @@ export class AuthService {
      const url = "http://localhost:3000/auth/reset-password-confirmation"
      await this.emailService.sendResetPassword(email, url, code)
      return {data : "Reset password mail has been send"}
+    }
+   async resetPasswordConfirmation(resetPasswordConfirmationDto: ResetPasswordConfirmationDto) {
+    const {code, email, password} = resetPasswordConfirmationDto; 
+    const user = await this.prismaService.user.findUnique({where : {email}})
+    if(!user) throw new NotFoundException('User not found'); 
+    const match = speakeasy.totp.verify({
+        secret: this.configService.get('OTP_CODE'),
+        token: code,
+        digits: 5,
+        step: 60 * 15,
+        encoding: 'base32',
+    });
+    if(!match) throw new UnauthorizedException("Invalid/expired token");
+    const hash = await bcrypt.hash(password, 10)
+    await this.prismaService.user.update({where : {email}, data : {password : hash}})
+    return {data : "Password updated"}
     }
 }
