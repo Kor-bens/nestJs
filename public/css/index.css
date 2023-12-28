@@ -1,0 +1,10 @@
+body{
+    background-color: red;
+}
+a{
+    color: red;
+}
+li{
+    list-style-type: none;
+    text-decoration: none;
+}
